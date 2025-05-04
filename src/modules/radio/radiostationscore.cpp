@@ -7,6 +7,10 @@ RadioStationsCore::RadioStationsCore(QObject *parent)
     : UInterface{parent}
 {
     qCInfo(categoryRadioStationsCoreCore) << "Create";
+
+    connect(&m_fileWatcher, &FileWatcher::fileModified, this, &RadioStationsCore::onRadioStationsFileChanged);
+
+    m_fileWatcher.start();
 }
 
 void RadioStationsCore::registrationSubscribe()
@@ -59,4 +63,12 @@ void RadioStationsCore::handleRadioStationsListRequest(const QVariantMap &data)
     emit signalUPacket(api::radio::RadioStationListResponse::__name__, radioStationsResponse);
 
     qCInfo(categoryRadioStationsCoreStations) << "Radio stations list is sent. Size:" << radioStationsList.size();
+}
+
+void RadioStationsCore::onRadioStationsFileChanged()
+{
+    qCInfo(categoryRadioStationsCoreStations) << "Radio station list has been updated in the file.";
+    qCInfo(categoryRadioStationsCoreStations) << "Sending updated radio station list to user...";
+;
+    handleRadioStationsListRequest({});
 }
