@@ -47,37 +47,81 @@ void ClientHandler::start()
 void ClientHandler::onReadyRead() {
     qCInfo(categoryClientHandlerSocket) << "Data received from client";
 
-    QByteArray bytes = m_socket->readAll();
-    //qCDebug(categoryClientHandlerSocket) << "Raw data received:" << bytes;
-
-    if (bytes.isEmpty()) {
-        qCCritical(categoryClientHandlerSocket) << "Received empty data packet!";
+    qCInfo(categoryClientHandlerSocket) << "New packet!";
+    if (!m_socket) {
+        qCWarning(categoryClientHandlerSocket) << "Error: Socket is not set, cannot read data";
         return;
     }
 
-    QDataStream in(bytes);
-    QVariantMap packet;
-    in >> packet;
+    quint64 availableBytes = m_socket->bytesAvailable();
 
-    if (packet.isEmpty()) {
-        qCCritical(categoryClientHandlerSocket) << "Invalid packet structure!";
-        return;
-    }
+    qCInfo(categoryClientHandlerSocket) << "Available bytes:" << availableBytes;
 
-    QString commandName = packet["name"].toString();
-    QVariantMap data = packet["data"].toMap();
+    while(availableBytes > 0){
+        QVariantMap packet;
 
-    qCInfo(categoryClientHandlerSocket) << "Packet received:" << commandName;
+        if(m_expectedSize == 0){
+            QVariantMap sizePacket;
 
-    if(m_registrationComplete){
+            QByteArray bytes = m_socket->read(m_datasizePacketSize);
+            QDataStream in(bytes);
+            in >> sizePacket;
+
+            if(!sizePacket.contains("size")){
+                qCWarning(categoryClientHandlerSocket) << "Invalid packet structure. Waiting...";
+                continue;
+            }
+
+            m_expectedSize = sizePacket["size"].toULongLong();
+            availableBytes -= m_datasizePacketSize;
+            qCInfo(categoryClientHandlerSocket) << "Next packet size:" << m_expectedSize << "|" << availableBytes << " bytes left";
+            continue;
+        }
+
+        if(availableBytes > m_expectedSize){
+            m_buffer.append(m_socket->read(m_expectedSize));
+            availableBytes -= m_expectedSize;
+        }
+        else if(m_buffer.size() + availableBytes > m_expectedSize){
+            quint64 size = m_expectedSize - m_buffer.size();
+            m_buffer.append(m_socket->read(size));
+            availableBytes -= size;
+        }
+        else{
+            m_buffer.append(m_socket->read(availableBytes));
+            availableBytes = 0;
+        }
+
+        if(m_buffer.size() < m_expectedSize){
+            qCInfo(categoryClientHandlerSocket) << "Bytes:" << m_buffer.size() << "/" << m_expectedSize << "|" << m_buffer.size() * 100 / m_expectedSize << "% |" << "Waiting...";
+            continue;
+        }
+        else if(m_buffer.size() == m_expectedSize){
+            QDataStream in(m_buffer);
+            in >> packet;
+            m_buffer.clear();
+            m_expectedSize = 0;
+            qCInfo(categoryClientHandlerSocket) << "Great full packet received!";
+        }
+        else{
+            qCCritical(categoryClientHandlerSocket) << "ERROR ---> :" << m_buffer.size() << "/" << m_expectedSize << "|" << m_buffer.size() * 100 / m_expectedSize << "%";
+            continue;
+        }
+
+
+
+        if (!packet.contains("name") || !packet.contains("data")) {
+            qCWarning(categoryClientHandlerSocket) << "Invalid packet structure";
+            continue;
+        }
+
+        QString commandName = packet["name"].toString();
+        QVariantMap data = packet["data"].toMap();
+
+        qCDebug(categoryClientHandlerSocket) << "Received command:" << commandName;
+
         emit signalUCommand(commandName, data);
-        qCInfo(categoryClientHandlerSocket) << "Packet:" << commandName;
     }
-    else{
-        std::pair<const QString&, const QVariantMap&> packet(commandName, data);
-        m_lostPackets.emplace_back(packet);
-    }
-
 }
 
 void ClientHandler::onDisconnected() {

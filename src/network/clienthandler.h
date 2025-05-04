@@ -42,6 +42,10 @@ private:
     QTcpSocket *m_socket;
     std::list<std::pair<const QString&, const QVariantMap&>> m_lostPackets;
 
+    QByteArray m_buffer;
+    quint64 m_expectedSize = 0;
+    const qsizetype m_datasizePacketSize = 29;
+
     RadioStationsCore m_radioStationsCore;
     ServerStatusCore m_serverStatusCore;
 
