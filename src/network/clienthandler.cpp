@@ -82,6 +82,7 @@ void ClientHandler::onReadyRead() {
 
 void ClientHandler::onDisconnected() {
     qCWarning(categoryClientHandlerCore) << "Client disconnected!";
+    removedConnections();
     emit disconnected(this);
 }
 
@@ -107,6 +108,9 @@ void ClientHandler::sendData(const QString &commandName, const QVariantMap &data
     QDataStream sizeDataOut(&dataSizeBytes, QIODevice::WriteOnly);
 
     sizeDataOut << sizePacket;
+
+    qCDebug(categoryClientHandlerSocket) << "Packet datasize size:" << dataSizeBytes.size();
+    qCDebug(categoryClientHandlerSocket) << "Packet data size:" << dataBytes.size();
 
     //qCDebug(categoryClientHandlerSocket) << "Raw data to send:" << bytes;
     m_socket->write(dataSizeBytes);

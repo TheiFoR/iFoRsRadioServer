@@ -37,6 +37,69 @@ void ConnectionManager::handleUnsubscriber(const QString &commandName, UInterfac
     qCInfo(categoryConnectionManagerSubscriber) << "Removed packet:" << commandName << "from: " << obj;
 }
 
+void ConnectionManager::onRemoved(UInterface *obj)
+{
+    qCInfo(categoryConnectionManagerCore) << "Removing all connections for object:" << obj;
+
+    // Удаляем из m_commandSubscribe
+    for (auto it = m_commandSubscribe.begin(); it != m_commandSubscribe.end(); ) {
+        QList<UInterface*>& list = it.value();
+        int before = list.size();
+        list.removeAll(obj);
+        if (!list.isEmpty()) {
+            ++it;
+        } else {
+            it = m_commandSubscribe.erase(it);
+        }
+
+        if (before != list.size()) {
+            disconnect(obj, &UInterface::signalUCommand, this, &ConnectionManager::onCommandReceived);
+            disconnect(obj, &UInterface::signalUPacket, this, &ConnectionManager::onPacketReceived);
+        }
+    }
+
+    // Удаляем из m_commandSubscribers
+    for (auto it = m_commandSubscribers.begin(); it != m_commandSubscribers.end(); ) {
+        QList<CommandFunctionContext>& list = it.value();
+        int before = list.size();
+        list.erase(std::remove_if(list.begin(), list.end(),
+                                  [obj](const CommandFunctionContext& ctx) {
+                                      return ctx.obj == obj;
+                                  }), list.end());
+
+        if (list.isEmpty()) {
+            it = m_commandSubscribers.erase(it);
+        } else {
+            ++it;
+        }
+
+        if (before != list.size()) {
+            disconnect(obj, &UInterface::signalUCommand, this, &ConnectionManager::onCommandReceived);
+        }
+    }
+
+    // Удаляем из m_packetSubscribers
+    for (auto it = m_packetSubscribers.begin(); it != m_packetSubscribers.end(); ) {
+        QList<PacketFunctionContext>& list = it.value();
+        int before = list.size();
+        list.erase(std::remove_if(list.begin(), list.end(),
+                                  [obj](const PacketFunctionContext& ctx) {
+                                      return ctx.obj == obj;
+                                  }), list.end());
+
+        if (list.isEmpty()) {
+            it = m_packetSubscribers.erase(it);
+        } else {
+            ++it;
+        }
+
+        if (before != list.size()) {
+            disconnect(obj, &UInterface::signalUPacket, this, &ConnectionManager::onPacketReceived);
+        }
+    }
+}
+
+
 void ConnectionManager::handleSubscriber(const QString &commandName, UInterface *obj, CallbackCommandFunction function)
 {
     qCInfo(categoryConnectionManagerSubscriber) << "Added new command:" << commandName << "from: " << obj;

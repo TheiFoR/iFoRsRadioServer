@@ -30,6 +30,8 @@ public slots:
     void handleSubscriber(const QString& commandName, UInterface* obj, CallbackPacketFunction function);
     void handleUnsubscriber(const QString& commandName, UInterface* obj, CallbackPacketFunction function);
 
+    void onRemoved(UInterface* obj);
+
 signals:
     void updateConnections();
 

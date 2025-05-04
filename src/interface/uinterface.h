@@ -4,6 +4,8 @@
 #include <QObject>
 #include <QVariantMap>
 #include <QLoggingCategory>
+#include <qeventloop.h>
+#include <qthread.h>
 
 #include "api/internal/model.h"
 #include "src/types/types.h"
@@ -16,9 +18,12 @@ class UInterface : public QObject
     Q_OBJECT
 public:
     explicit UInterface(QObject *parent = nullptr);
+    ~UInterface();
 
     virtual void registrationSubscribe() = 0;
     void registrateTransfer(UInterface* fromUInterface, UInterface* toUInterface);
+
+    void removedConnections();
 
 signals:
     void signalUCommand(const QString& commandName, const QVariantMap &data);
@@ -32,6 +37,11 @@ signals:
 
     void unsubscribe(const QString& commandName, UInterface* obj, CallbackCommandFunction function);
     void unsubscribe(const QString& commandName, UInterface* obj, CallbackPacketFunction function);
+
+    void removed(UInterface* obj);
+
+private:
+    QList<UInterface*> m_interfaces;
 };
 
 #endif // UINTERFACE_H
