@@ -32,7 +32,7 @@ void Core::registrationSubscribe()
 {
     qCInfo(categoryCoreBase) << "Registration subscription started";
 
-    connect(this, &UInterface::removed, &m_connectionManager, &ConnectionManager::onRemoved);
+    connect(this, &UInterface::remove, &m_connectionManager, &ConnectionManager::onRemoved);
 
     connect(this, QOverload<const QString&, UInterface*, CallbackCommandFunction>::of(&UInterface::subscribe), &m_connectionManager, QOverload<const QString&, UInterface*, CallbackCommandFunction>::of(&ConnectionManager::handleSubscriber));
     connect(this, QOverload<const QString&, UInterface*, CallbackPacketFunction>::of(&UInterface::subscribe), &m_connectionManager, QOverload<const QString&, UInterface*, CallbackPacketFunction>::of(&ConnectionManager::handleSubscriber));

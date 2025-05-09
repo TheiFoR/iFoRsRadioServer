@@ -26,6 +26,7 @@ public:
     void registrationSubscribe() override;
 
 public slots:
+    void removalSuccessful() override;
     void start();
 
 signals:
@@ -40,14 +41,17 @@ private slots:
 private:
     bool m_registrationComplete = false;
     QTcpSocket *m_socket;
+    quint32 m_ip = 0;
+    quint16 m_port = 0;
+    QString m_address = "";
     std::list<std::pair<const QString&, const QVariantMap&>> m_lostPackets;
 
     QByteArray m_buffer;
     quint64 m_expectedSize = 0;
     const qsizetype m_datasizePacketSize = 29;
 
-    RadioStationsCore m_radioStationsCore;
-    ServerStatusCore m_serverStatusCore;
+    RadioStationsCore m_radioStationsCore{this};
+    ServerStatusCore m_serverStatusCore{this};
 
     void handleConnectionRequest(const QVariantMap& data);
 

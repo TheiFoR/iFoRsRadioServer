@@ -48,22 +48,21 @@ void Server::onNewConnection()
     }
 
     QThread *clientThread = new QThread(this);
-    ClientHandler *clientHandler = new ClientHandler(clientSocket, this);
+    ClientHandler *clientHandler = new ClientHandler(clientSocket);
 
     registrateTransfer(clientHandler, this);
 
-
     connect(clientThread, &QThread::started, clientHandler, &ClientHandler::start);
 
-    connect(clientThread, &QThread::finished, clientHandler, &ClientHandler::deleteLater);
-    connect(clientThread, &QThread::finished, clientThread, &QThread::deleteLater);
+    connect(clientThread, &QThread::finished, clientHandler, &ClientHandler::deleteLater, Qt::QueuedConnection);
+    connect(clientThread, &QThread::finished, clientThread, &QThread::deleteLater, Qt::QueuedConnection);
 
     connect(clientHandler, &ClientHandler::disconnected, this, &Server::onClientDisconnected);
 
     m_clients.insert(clientThread, clientHandler);
 
     clientHandler->moveToThread(clientThread);
-    clientHandler->start();
+    clientThread->start();
 
     qCInfo(categoryServerConnection) << "New connection from:" << clientSocket->peerAddress().toString();
 }
@@ -74,6 +73,7 @@ void Server::onClientDisconnected(ClientHandler *handler)
     if (clientThread) {
         qCInfo(categoryServerConnection) << "Client disconnected, removing handler from server";
         m_clients.remove(clientThread);
+        qWarning() << clientThread << handler;
         clientThread->quit();
     } else {
         qCWarning(categoryServerConnection) << "Could not find client thread for handler";

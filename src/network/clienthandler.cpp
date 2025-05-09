@@ -7,17 +7,30 @@ ClientHandler::ClientHandler(QTcpSocket *socket, QObject *parent)
     : UInterface(parent)
     , m_socket(socket)
 {
-    qCInfo(categoryClientHandlerCore) << "Create:" << m_socket;
+    qCInfo(categoryClientHandlerCore) << id() << "Create";
+
+    m_ip = m_socket->peerAddress().toIPv4Address();
+    m_port = m_socket->peerPort();
+    m_address = QString::number((m_ip & 0xFF000000) >> 24) + "." + QString::number((m_ip & 0x00FF0000) >> 16) + "." + QString::number((m_ip & 0x0000FF00) >> 8) + "." + QString::number(m_ip & 0x000000FF) + ":" + QString::number(m_port);
+
+    setUseId(true);
+
+    quint64 clientId = quint64(m_ip) * 100000 +  + m_port;
+    setId(clientId);
+
+    m_radioStationsCore.setId(clientId);
+    m_serverStatusCore.setId(clientId);
 }
 
 ClientHandler::~ClientHandler() {
-    qCInfo(categoryClientHandlerCore) << "ClientHandler destroyed, deleting socket";
+    return;
+    qCInfo(categoryClientHandlerCore) << id() << "ClientHandler destroyed, deleting socket";
     m_socket->deleteLater();
 }
 
 void ClientHandler::registrationSubscribe()
 {
-    qCInfo(categoryClientHandlerCore) << "Registration subscription started";
+    qCInfo(categoryClientHandlerCore) << id() << "Registration subscription started";
 
     emit createSubscribe(api::radio::RadioStationListRequest::__name__, this);
     emit createSubscribe(api::server::ServerConnectionRequest::__name__, this);
@@ -27,7 +40,7 @@ void ClientHandler::registrationSubscribe()
     registrateTransfer(&m_radioStationsCore, this);
     registrateTransfer(&m_serverStatusCore, this);
 
-    qCInfo(categoryClientHandlerCore) << "Registration subscription completed";
+    qCInfo(categoryClientHandlerCore) << id() << "Registration subscription completed";
 
     m_registrationComplete = true;
 
@@ -36,26 +49,26 @@ void ClientHandler::registrationSubscribe()
 
 void ClientHandler::start()
 {
-    qCInfo(categoryClientHandlerCore) << "Starting ClientHandler for socket:" << m_socket;
+    qCInfo(categoryClientHandlerCore) << id() << "Starting ClientHandler for socket:" << m_socket;
 
     QObject::connect(m_socket, &QTcpSocket::readyRead, this, &ClientHandler::onReadyRead);
     QObject::connect(m_socket, &QTcpSocket::disconnected, this, &ClientHandler::onDisconnected);
 
-    qCInfo(categoryClientHandlerCore) << "Connections established for socket:" << m_socket;
+    qCInfo(categoryClientHandlerCore) << id() << "Connections established for socket:" << m_socket;
 }
 
 void ClientHandler::onReadyRead() {
-    qCInfo(categoryClientHandlerSocket) << "Data received from client";
+    qCInfo(categoryClientHandlerSocket) << id() << "Data received from client:" << m_address;
 
-    qCInfo(categoryClientHandlerSocket) << "New packet!";
+    qCInfo(categoryClientHandlerSocket) << id() << "New packet!";
     if (!m_socket) {
-        qCWarning(categoryClientHandlerSocket) << "Error: Socket is not set, cannot read data";
+        qCWarning(categoryClientHandlerSocket) << id() << "Error: Socket is not set, cannot read data";
         return;
     }
 
     quint64 availableBytes = m_socket->bytesAvailable();
 
-    qCInfo(categoryClientHandlerSocket) << "Available bytes:" << availableBytes;
+    qCInfo(categoryClientHandlerSocket) << id() << "Available bytes:" << availableBytes;
 
     while(availableBytes > 0){
         QVariantMap packet;
@@ -68,13 +81,13 @@ void ClientHandler::onReadyRead() {
             in >> sizePacket;
 
             if(!sizePacket.contains("size")){
-                qCWarning(categoryClientHandlerSocket) << "Invalid packet structure. Waiting...";
+                qCWarning(categoryClientHandlerSocket) << id() << "Invalid packet structure. Waiting...";
                 continue;
             }
 
             m_expectedSize = sizePacket["size"].toULongLong();
             availableBytes -= m_datasizePacketSize;
-            qCInfo(categoryClientHandlerSocket) << "Next packet size:" << m_expectedSize << "|" << availableBytes << " bytes left";
+            qCInfo(categoryClientHandlerSocket) << id() << "Next packet size:" << m_expectedSize << "|" << availableBytes << " bytes left";
             continue;
         }
 
@@ -93,7 +106,7 @@ void ClientHandler::onReadyRead() {
         }
 
         if(m_buffer.size() < m_expectedSize){
-            qCInfo(categoryClientHandlerSocket) << "Bytes:" << m_buffer.size() << "/" << m_expectedSize << "|" << m_buffer.size() * 100 / m_expectedSize << "% |" << "Waiting...";
+            qCInfo(categoryClientHandlerSocket) << id() << "Bytes:" << m_buffer.size() << "/" << m_expectedSize << "|" << m_buffer.size() * 100 / m_expectedSize << "% |" << "Waiting...";
             continue;
         }
         else if(m_buffer.size() == m_expectedSize){
@@ -101,38 +114,41 @@ void ClientHandler::onReadyRead() {
             in >> packet;
             m_buffer.clear();
             m_expectedSize = 0;
-            qCInfo(categoryClientHandlerSocket) << "Great full packet received!";
+            qCInfo(categoryClientHandlerSocket) << id() << "Great full packet received!";
         }
         else{
-            qCCritical(categoryClientHandlerSocket) << "ERROR ---> :" << m_buffer.size() << "/" << m_expectedSize << "|" << m_buffer.size() * 100 / m_expectedSize << "%";
+            qCCritical(categoryClientHandlerSocket) << id() << "FATAL ERROR:" << m_buffer.size() << "/" << m_expectedSize << "|" << m_buffer.size() * 100 / m_expectedSize << "%";
             continue;
         }
 
 
 
         if (!packet.contains("name") || !packet.contains("data")) {
-            qCWarning(categoryClientHandlerSocket) << "Invalid packet structure";
+            qCWarning(categoryClientHandlerSocket) << id() << "Invalid packet structure";
             continue;
         }
 
         QString commandName = packet["name"].toString();
         QVariantMap data = packet["data"].toMap();
 
-        qCDebug(categoryClientHandlerSocket) << "Received command:" << commandName;
+        qCDebug(categoryClientHandlerSocket) << id() << "Received command:" << commandName;
 
         emit signalUCommand(commandName, data);
     }
 }
 
 void ClientHandler::onDisconnected() {
-    qCWarning(categoryClientHandlerCore) << "Client disconnected!";
-    removedConnections();
+    qCWarning(categoryClientHandlerCore) << id() << "Client disconnected!";
+    removeConnections();
+}
+
+void ClientHandler::removalSuccessful(){
     emit disconnected(this);
 }
 
 void ClientHandler::sendData(const QString &commandName, const QVariantMap &data)
 {
-    qCInfo(categoryClientHandlerSocket) << "Sending data, command:" << commandName;
+    qCInfo(categoryClientHandlerSocket) << id() << "Sending data, command:" << commandName << "to" << m_address;
 
     QVariantMap dataPacket;
     QVariantMap sizePacket;
@@ -153,8 +169,8 @@ void ClientHandler::sendData(const QString &commandName, const QVariantMap &data
 
     sizeDataOut << sizePacket;
 
-    qCDebug(categoryClientHandlerSocket) << "Packet datasize size:" << dataSizeBytes.size();
-    qCDebug(categoryClientHandlerSocket) << "Packet data size:" << dataBytes.size();
+    qCDebug(categoryClientHandlerSocket) << id() << "Packet datasize size:" << dataSizeBytes.size();
+    qCDebug(categoryClientHandlerSocket) << id() << "Packet data size:" << dataBytes.size();
 
     //qCDebug(categoryClientHandlerSocket) << "Raw data to send:" << bytes;
     m_socket->write(dataSizeBytes);
@@ -167,7 +183,7 @@ void ClientHandler::sendLostPacket()
 {
     for(const std::pair<const QString&, const QVariantMap&>& packet : m_lostPackets){
         emit signalUPacket(packet.first, packet.second);
-        qCInfo(categoryClientHandlerSocket) << "Lost packet sent:" << packet.first;
+        qCInfo(categoryClientHandlerSocket) << id() << "Lost packet sent:" << packet.first;
     }
     m_lostPackets.clear();
 }

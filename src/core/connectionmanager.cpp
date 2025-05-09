@@ -37,66 +37,67 @@ void ConnectionManager::handleUnsubscriber(const QString &commandName, UInterfac
     qCInfo(categoryConnectionManagerSubscriber) << "Removed packet:" << commandName << "from: " << obj;
 }
 
-void ConnectionManager::onRemoved(UInterface *obj)
+void ConnectionManager::onRemoved(UInterface * rootObj, QList<UInterface *> objs)
 {
-    qCInfo(categoryConnectionManagerCore) << "Removing all connections for object:" << obj;
+    qCInfo(categoryConnectionManagerCore) << "Removing all connections for objects:" << objs;
 
-    // Удаляем из m_commandSubscribe
-    for (auto it = m_commandSubscribe.begin(); it != m_commandSubscribe.end(); ) {
-        QList<UInterface*>& list = it.value();
-        int before = list.size();
-        list.removeAll(obj);
-        if (!list.isEmpty()) {
-            ++it;
-        } else {
-            it = m_commandSubscribe.erase(it);
+    for(UInterface* obj : objs){
+        for (auto it = m_commandSubscribe.begin(); it != m_commandSubscribe.end(); ) {
+            QList<UInterface*>& list = it.value();
+            int before = list.size();
+            list.removeAll(obj);
+            if (!list.isEmpty()) {
+                ++it;
+            } else {
+                it = m_commandSubscribe.erase(it);
+            }
+
+            if (before != list.size()) {
+                disconnect(obj, &UInterface::signalIdUCommand, this, &ConnectionManager::onCommandReceived);
+                disconnect(obj, &UInterface::signalIdUPacket, this, &ConnectionManager::onPacketReceived);
+            }
         }
 
-        if (before != list.size()) {
-            disconnect(obj, &UInterface::signalUCommand, this, &ConnectionManager::onCommandReceived);
-            disconnect(obj, &UInterface::signalUPacket, this, &ConnectionManager::onPacketReceived);
+        for (auto it = m_commandSubscribers.begin(); it != m_commandSubscribers.end(); ) {
+            QList<CommandFunctionContext>& list = it.value();
+            int before = list.size();
+            list.erase(std::remove_if(list.begin(), list.end(),
+                                      [obj](const CommandFunctionContext& ctx) {
+                                          return ctx.obj == obj;
+                                      }), list.end());
+
+            if (list.isEmpty()) {
+                it = m_commandSubscribers.erase(it);
+            } else {
+                ++it;
+            }
+
+            if (before != list.size()) {
+                disconnect(obj, &UInterface::signalIdUCommand, this, &ConnectionManager::onCommandReceived);
+            }
+        }
+
+        for (auto it = m_packetSubscribers.begin(); it != m_packetSubscribers.end(); ) {
+            QList<PacketFunctionContext>& list = it.value();
+            int before = list.size();
+            list.erase(std::remove_if(list.begin(), list.end(),
+                                      [obj](const PacketFunctionContext& ctx) {
+                                          return ctx.obj == obj;
+                                      }), list.end());
+
+            if (list.isEmpty()) {
+                it = m_packetSubscribers.erase(it);
+            } else {
+                ++it;
+            }
+
+            if (before != list.size()) {
+                disconnect(obj, &UInterface::signalIdUPacket, this, &ConnectionManager::onPacketReceived);
+            }
         }
     }
 
-    // Удаляем из m_commandSubscribers
-    for (auto it = m_commandSubscribers.begin(); it != m_commandSubscribers.end(); ) {
-        QList<CommandFunctionContext>& list = it.value();
-        int before = list.size();
-        list.erase(std::remove_if(list.begin(), list.end(),
-                                  [obj](const CommandFunctionContext& ctx) {
-                                      return ctx.obj == obj;
-                                  }), list.end());
-
-        if (list.isEmpty()) {
-            it = m_commandSubscribers.erase(it);
-        } else {
-            ++it;
-        }
-
-        if (before != list.size()) {
-            disconnect(obj, &UInterface::signalUCommand, this, &ConnectionManager::onCommandReceived);
-        }
-    }
-
-    // Удаляем из m_packetSubscribers
-    for (auto it = m_packetSubscribers.begin(); it != m_packetSubscribers.end(); ) {
-        QList<PacketFunctionContext>& list = it.value();
-        int before = list.size();
-        list.erase(std::remove_if(list.begin(), list.end(),
-                                  [obj](const PacketFunctionContext& ctx) {
-                                      return ctx.obj == obj;
-                                  }), list.end());
-
-        if (list.isEmpty()) {
-            it = m_packetSubscribers.erase(it);
-        } else {
-            ++it;
-        }
-
-        if (before != list.size()) {
-            disconnect(obj, &UInterface::signalUPacket, this, &ConnectionManager::onPacketReceived);
-        }
-    }
+    QMetaObject::invokeMethod(rootObj, "removalSuccessful", Qt::QueuedConnection);
 }
 
 
@@ -120,40 +121,57 @@ void ConnectionManager::handleUpdateConnections()
         const QList<UInterface*>& subscribes = it.value();
 
         for (UInterface* subscribe : subscribes) {
-            connect(subscribe, &UInterface::signalUCommand,
+            connect(subscribe, &UInterface::signalIdUCommand,
                     this, &ConnectionManager::onCommandReceived,
                     Qt::UniqueConnection);
 
-            connect(subscribe, &UInterface::signalUPacket,
+            connect(subscribe, &UInterface::signalIdUPacket,
                     this, &ConnectionManager::onPacketReceived,
                     Qt::UniqueConnection);
         }
     }
 }
 
-void ConnectionManager::onCommandReceived(const QString& commandName, const QVariantMap& data)
+void ConnectionManager::onCommandReceived(const QString& commandName, const QVariantMap& data, quint64 id)
 {
     qCDebug(categoryConnectionManagerCommand) << "Command received:" << commandName;
     auto it = m_commandSubscribers.find(commandName);
     if (it != m_commandSubscribers.end()) {
         for (const CommandFunctionContext& ctx : it.value()) {
-            if (ctx.obj) {
+            if (ctx.obj && (!ctx.obj->useId() || (ctx.obj->id() == id))) {
                 QMetaObject::invokeMethod(ctx.obj, [ctx, data]() {
                     ctx.function(data);
                 }, Qt::QueuedConnection);
             }
+            else {
+                // qDebug(categoryConnectionManagerCommand)
+                // << "Skipping invoke coommand:"
+                // << "ctx.obj=" << ctx.obj
+                // << (ctx.obj ? QString("ctx.obj->useId()=%1").arg(ctx.obj->useId()) : "ctx.obj->useId()=N/A")
+                // << (ctx.obj ? QString("ctx.obj->id()=%1").arg(ctx.obj->id()) : "ctx.obj->id()=N/A")
+                // << "id=" << id;
+            }
         }
     }
 }
-void ConnectionManager::onPacketReceived(const QString &commandName, const QVariantMap &data)
+void ConnectionManager::onPacketReceived(const QString &commandName, const QVariantMap &data, quint64 id)
 {
+    qCDebug(categoryConnectionManagerCommand) << "Packet received:" << commandName;
     auto it = m_packetSubscribers.find(commandName);
     if (it != m_packetSubscribers.end()) {
         for (const PacketFunctionContext& ctx : it.value()) {
-            if (ctx.obj) {
+            if (ctx.obj && (!ctx.obj->useId() || (ctx.obj->id() == id))) {
                 QMetaObject::invokeMethod(ctx.obj, [ctx, commandName, data]() {
                     ctx.function(commandName, data);
                 }, Qt::QueuedConnection);
+            }
+            else {
+                // qDebug(categoryConnectionManagerCommand)
+                // << "Skipping invoke packet:"
+                // << "ctx.obj=" << ctx.obj
+                // << (ctx.obj ? QString("ctx.obj->useId()=%1").arg(ctx.obj->useId()) : "ctx.obj->useId()=N/A")
+                // << (ctx.obj ? QString("ctx.obj->id()=%1").arg(ctx.obj->id()) : "ctx.obj->id()=N/A")
+                // << "id=" << id;
             }
         }
     }

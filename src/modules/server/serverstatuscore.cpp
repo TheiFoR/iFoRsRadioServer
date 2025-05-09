@@ -7,6 +7,7 @@ ServerStatusCore::ServerStatusCore(QObject *parent)
     : UInterface{parent}
 {
     qCInfo(categoryServerStatusCoreCore) << "Create";
+    setUseId(true);
 }
 
 void ServerStatusCore::registrationSubscribe()

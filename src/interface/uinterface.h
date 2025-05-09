@@ -21,9 +21,21 @@ public:
     ~UInterface();
 
     virtual void registrationSubscribe() = 0;
+    virtual void removalSuccessful();
+
     void registrateTransfer(UInterface* fromUInterface, UInterface* toUInterface);
 
-    void removedConnections();
+    void removeConnections();
+
+    void setUseId(bool enabled = true);
+    bool useId();
+
+    void setId(quint64 id);
+    quint64 id();
+
+    QList<UInterface *> childreinIterfaces() const;
+    QList<UInterface *> allChildreinIterfaces() const;
+
 
 signals:
     void signalUCommand(const QString& commandName, const QVariantMap &data);
@@ -38,10 +50,22 @@ signals:
     void unsubscribe(const QString& commandName, UInterface* obj, CallbackCommandFunction function);
     void unsubscribe(const QString& commandName, UInterface* obj, CallbackPacketFunction function);
 
-    void removed(UInterface* obj);
+
+    void remove(UInterface * rootObj, QList<UInterface *> objs);
+
+
+    void signalIdUCommand(const QString& commandName, const QVariantMap &data, quint64 id = 0xFFFFFFFFFFFFFFFF);
+    void signalIdUPacket(const QString& commandName, const QVariantMap &data, quint64 id = 0xFFFFFFFFFFFFFFFF);
+
+private slots:
+    void onUCommandEmited(const QString& commandName, const QVariantMap &data);
+    void onUPacketEmited(const QString& commandName, const QVariantMap &data);
 
 private:
-    QList<UInterface*> m_interfaces;
+    QList<UInterface*> m_childreinIterfaces;
+
+    bool m_useId = false;
+    quint64 m_id = 0xFFFFFFFFFFFFFFFF;
 };
 
 #endif // UINTERFACE_H

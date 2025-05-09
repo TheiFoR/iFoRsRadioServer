@@ -7,6 +7,7 @@ RadioStationsCore::RadioStationsCore(QObject *parent)
     : UInterface{parent}
 {
     qCInfo(categoryRadioStationsCoreCore) << "Create";
+    setUseId(true);
 
     connect(&m_fileWatcher, &FileWatcher::fileModified, this, &RadioStationsCore::onRadioStationsFileChanged);
 
