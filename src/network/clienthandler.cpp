@@ -143,7 +143,7 @@ void ClientHandler::onDisconnected() {
 }
 
 void ClientHandler::removalSuccessful(){
-    emit disconnected(this);
+    emit disconnected(m_socket);
 }
 
 void ClientHandler::sendData(const QString &commandName, const QVariantMap &data)

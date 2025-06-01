@@ -30,7 +30,7 @@ public slots:
     void start();
 
 signals:
-    void disconnected(ClientHandler *handler);
+    void disconnected(QTcpSocket *socket);
 
 private slots:
     void onReadyRead();

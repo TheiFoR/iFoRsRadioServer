@@ -47,37 +47,36 @@ void Server::onNewConnection()
         return;
     }
 
-    QThread *clientThread = new QThread(this);
-    ClientHandler *clientHandler = new ClientHandler(clientSocket);
+    std::shared_ptr<QThread> clientThread = std::make_shared<QThread>(this);
+    std::shared_ptr<ClientHandler> clientHandler = std::make_shared<ClientHandler>(clientSocket);
 
-    registrateTransfer(clientHandler, this);
+    registrateTransfer(clientHandler.get(), this);
 
-    connect(clientThread, &QThread::started, clientHandler, &ClientHandler::start);
+    connect(clientThread.get(), &QThread::started, clientHandler.get(), &ClientHandler::start);
 
-    connect(clientThread, &QThread::finished, clientHandler, &ClientHandler::deleteLater, Qt::QueuedConnection);
-    connect(clientThread, &QThread::finished, clientThread, &QThread::deleteLater, Qt::QueuedConnection);
+    connect(clientHandler.get(), &ClientHandler::disconnected, this, &Server::onClientDisconnected);
 
-    connect(clientHandler, &ClientHandler::disconnected, this, &Server::onClientDisconnected);
+    m_clients.insert(clientSocket, ClientContext{clientHandler, clientThread});
 
-    m_clients.insert(clientThread, clientHandler);
-
-    clientHandler->moveToThread(clientThread);
+    clientHandler->moveToThread(clientThread.get());
     clientThread->start();
 
     qCInfo(categoryServerConnection) << "New connection from:" << clientSocket->peerAddress().toString();
 }
 
-void Server::onClientDisconnected(ClientHandler *handler)
+void Server::onClientDisconnected(QTcpSocket *socket)
 {
-    QThread *clientThread = m_clients.key(handler);
-    if (clientThread) {
-        qCInfo(categoryServerConnection) << "Client disconnected, removing handler from server";
-        m_clients.remove(clientThread);
-        qWarning() << clientThread << handler;
-        clientThread->quit();
+    ClientContext clientContext = m_clients.value(socket);
+    if (clientContext.thread.get()) {
+        m_clients.remove(socket);
+        qCInfo(categoryServerConnection) << "Client disconnected, removing handler from server:" << "ClientContext[ Handler:" << clientContext.handler.get()
+                                         << "Thread:" << clientContext.thread.get() << "Count: [" << clientContext.handler.use_count() << clientContext.thread.use_count() << "] ]";
+        clientContext.thread->quit();
+        clientContext.thread->wait();
     } else {
         qCWarning(categoryServerConnection) << "Could not find client thread for handler";
     }
+    qCInfo(categoryServerConnection) << "Client success disconnected!";
 }
 
 void Server::loadSettings()
