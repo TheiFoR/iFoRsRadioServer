@@ -23,7 +23,7 @@ private:
     ConnectionManager m_connectionManager;
 
     QThread m_serverThread;
-    Server m_server;
+    iFoRRadio::Server m_server;
 };
 
 #endif // CORE_H

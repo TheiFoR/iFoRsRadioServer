@@ -1,5 +1,6 @@
 #include "server.h"
 
+namespace iFoRRadio{
 LOG_DECLARE(Server, Core);
 LOG_DECLARE(Server, Status);
 LOG_DECLARE(Server, Connection);
@@ -26,16 +27,12 @@ void Server::registrationSubscribe()
 
 void Server::start()
 {
-    m_tcpServer = std::make_unique<QTcpServer>();
+    m_grpcServer = std::make_unique<GrpcServer>();
 
-    if (!m_tcpServer->listen(QHostAddress::Any, m_port)) {
-        qCCritical(categoryServerStatus) << "Error starting the server:" << m_tcpServer->errorString();
-        return;
-    }
+    std::string address(m_ip.toStdString() + ":" + QString::number(m_port).toStdString());
+    m_grpcServer->setAddress(address);
 
-    connect(m_tcpServer.get(), &QTcpServer::newConnection, this, &Server::onNewConnection);
-
-    qCInfo(categoryServerStatus) << "Server started on port" << m_port;
+    m_grpcServer->start();
 }
 
 void Server::onNewConnection()
@@ -87,4 +84,5 @@ void Server::loadSettings()
 void Server::saveSettings()
 {
     Config::setValue("Server", "port", m_port);
+}
 }

@@ -1,5 +1,8 @@
 # Set the minimum required version of CMake
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.19)
+message(STATUS "CMake version: ${CMAKE_VERSION}")
+
+set(CMAKE_TOOLCHAIN_FILE F:/Other/C/Qt/Api/grpc/New_folder/vcpkg/scripts/buildsystems/vcpkg.cmake CACHE STRING "")
 
 # Define the project name and version
 set(PROJECT_NAME iFoRsRadioServer)
@@ -20,27 +23,62 @@ set(CMAKE_AUTOUIC ON)
 set(ROOT_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 # Set the directory for Qt's binary files (e.g., Qt DLLs)
-set(QT_BIN_DIR "${CMAKE_PREFIX_PATH}/bin")
+set(QT_BIN_DIR ${Qt6_DIR}/../../../bin)
 
 # Set the directory where Qt plugins are located
-set(QT_PLUGINS_DIR "${CMAKE_PREFIX_PATH}/plugins")
+set(QT_PLUGINS_DIR ${Qt6_DIR}/../../../plugins)
+
+# Set the directory for Qt QML files
+# set(QT_QML_DIR ${Qt6_DIR}/../../../qml)
+
+# Enable QML compilation for the project (Qt Quick Compiler)
+# set(QT_QML_COMPILER ON CACHE BOOL "Enable QML compiler")
+
+
 
 # List of Qt dependencies to link with (can be expanded later with more components)
-set(DEP_LIST
+set(QT_DEP_LIST
     Core
     Network
 )
+set(DEP_LIST
+    protobuf::libprotobuf
+    gRPC::grpc++
+    absl::strings
+    absl::log
+    absl::base
+)
+set(ALL_DEP_LIST
+    ${DEP_LIST}
+)
+foreach(dep IN LISTS QT_DEP_LIST)
+    list(APPEND ALL_DEP_LIST Qt6::${dep})
+endforeach()
+
+
 
 include("${ROOT_DIR}/cmake/utils.cmake")
 include("${ROOT_DIR}/cmake/options.cmake")
 
-# Loop through each dependency in DEP_LIST and find the corresponding Qt component
-foreach(dep IN LISTS DEP_LIST)
+
+
+# Loop through each dependency in QT_DEP_LIST and find the corresponding Qt component
+foreach(dep IN LISTS QT_DEP_LIST)
     find_package(Qt6 REQUIRED COMPONENTS ${dep})  # Find the necessary Qt6 components
 endforeach()
 
+find_package(Protobuf CONFIG REQUIRED)
+find_package(gRPC CONFIG REQUIRED)
+find_package(absl CONFIG REQUIRED)
+
+
+
 # Include the current source directory to find header files
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories("F:/Other/C/Qt/Api/grpc/New_folder/vcpkg/installed/x64-windows/include")
+
+
 
 # Recursively collect all source files in the specified directories
 file(GLOB_RECURSE SRC
@@ -48,13 +86,18 @@ file(GLOB_RECURSE SRC
     "src/*.h"     # Collect all .h files in the src directory
     "api/*.cpp"   # Collect all .cpp files in the api directory
     "api/*.h"     # Collect all .h files in the api directory
+    ${CMAKE_CURRENT_BINARY_DIR}/*.h
+    ${CMAKE_CURRENT_BINARY_DIR}/*.cc
 )
 
 # Set up the project for Qt 6.5 or higher, ensuring proper integration
 qt_standard_project_setup(REQUIRES 6.5)
 
+# Add Qt resources (e.g., images, QML files) from the resource file (resources.qrc)
+# qt_add_resources(RESOURCE_FILES resources.qrc)
+
 # Define the executable target for the project
-add_executable(${PROJECT_NAME}
+qt_add_executable(${PROJECT_NAME}
     src/main.cpp # Main entry point for the application
 )
 
@@ -65,10 +108,9 @@ target_sources(${PROJECT_NAME}
     ${RESOURCE_FILES}  # Add the collected resource files
 )
 
-# Link the Qt Quick library (and others in the DEP_LIST) to the executable
-foreach(dep IN LISTS DEP_LIST)
+foreach(dep IN LISTS ALL_DEP_LIST)
     target_link_libraries(${PROJECT_NAME}
-        PRIVATE Qt6::${dep}  # Link all the required Qt libraries from DEP_LIST
+        PRIVATE ${dep} # Link all the required libraries from ALL_DEP_LIST
     )
 endforeach()
 
@@ -79,14 +121,14 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 # Set the archive output directory (for static libraries)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
-# Set the executable to be a Windows application (without a console window)
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    WIN32_EXECUTABLE FALSE
-)
-
 # Set target properties to ensure the executable is placed in the correct directory
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# Set the executable to be a Windows application (without a console window)
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    WIN32_EXECUTABLE FALSE
 )
 
 # Include the GNUInstallDirs module for installation paths (e.g., bin, lib)
@@ -96,14 +138,12 @@ install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-message(STATUS ARRA ${QT_QML_DIR})
-
-# copy_dir("${QT_PLUGINS_DIR}/platforms"    "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plugins/platforms")
-# copy_dir("${QT_PLUGINS_DIR}/imageformats" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plugins/imageformats")
-# copy_dir("${QT_PLUGINS_DIR}/styles"       "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plugins/styles")
+copy_dir("${QT_PLUGINS_DIR}/platforms"    "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plugins/platforms")
+copy_dir("${QT_PLUGINS_DIR}/imageformats" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plugins/imageformats")
+copy_dir("${QT_PLUGINS_DIR}/styles"       "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plugins/styles")
 # copy_dir("${QT_QML_DIR}"                  "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/qml")
 
-# copy_qt_dlls_from_deps(${DEP_LIST})
+copy_qt_dlls_from_deps(${QT_DEP_LIST})
 if(WIN32)
     run_windeployqt6()
 endif()

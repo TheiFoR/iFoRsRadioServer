@@ -7,7 +7,7 @@ Core::Core(QObject *parent)
 {
     qCInfo(categoryCoreBase) << "Create";
 
-    connect(&m_serverThread, &QThread::started, &m_server, &Server::start);
+    connect(&m_serverThread, &QThread::started, &m_server, &iFoRRadio::Server::start);
     connect(&m_serverThread, &QThread::finished, &m_server, &QObject::deleteLater);
 }
 

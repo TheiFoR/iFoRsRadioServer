@@ -10,9 +10,13 @@
 
 #include "clienthandler.h"
 #include "src/modules/server/serverstatuscore.h"
+#include "src/network/grpcserver.h"
 #include "src/utils/config.h"
 #include "src/types/clientcontext.h"
 
+#include "test.grpc.pb.h"
+
+namespace iFoRRadio{
 class Server : public UInterface
 {
     Q_OBJECT
@@ -31,13 +35,15 @@ private slots:
 
 private:
     std::unique_ptr<QTcpServer> m_tcpServer;
+    std::unique_ptr<GrpcServer> m_grpcServer;
 
     QMap<QTcpSocket*, ClientContext> m_clients;
 
     quint16 m_port = 1310;
+    QString m_ip = "127.0.0.1";
 
     void loadSettings();
     void saveSettings();
 };
-
+}
 #endif // SERVER_H
