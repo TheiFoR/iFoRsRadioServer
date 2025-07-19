@@ -4,7 +4,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/copy.cmake)
 function(remove_qt_folder)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E remove_directory
-        "${CMAKE_BINARY_DIR}/.qt"
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/.qt"
         COMMENT "Removing .qt folder after build"
     )
 endfunction()
