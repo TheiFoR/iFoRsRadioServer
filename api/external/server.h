@@ -6,10 +6,10 @@
 namespace api{
 namespace server{
 
-API(ServerConnectionRequest){
+API(ConnectionRequest){
 }
 
-API(ServerConnectionResponse){
+API(ConnectionResponse){
     API_FIELD(Confirmation)
 }
 
