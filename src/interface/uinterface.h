@@ -13,6 +13,8 @@
 
 using namespace std::placeholders;
 
+class ConnectionManager;
+
 class UInterface : public QObject
 {
     Q_OBJECT
@@ -24,6 +26,7 @@ public:
     virtual void removalSuccessful();
 
     void registrateTransfer(UInterface* fromUInterface, UInterface* toUInterface);
+    void registrateTransfer(ConnectionManager* toConnectionManager, UInterface* fromUInterface);
 
     void removeConnections();
 
@@ -32,6 +35,9 @@ public:
 
     void setId(quint64 id);
     quint64 id();
+
+    void setStrId(const QString& id);
+    QString strId();
 
     QList<UInterface *> childreinIterfaces() const;
     QList<UInterface *> allChildreinIterfaces() const;
@@ -66,6 +72,7 @@ private:
 
     bool m_useId = false;
     quint64 m_id = 0xFFFFFFFFFFFFFFFF;
+    QString m_strId = "unknown";
 };
 
 #endif // UINTERFACE_H

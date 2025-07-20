@@ -12,6 +12,7 @@
 #include "src/modules/server/serverstatuscore.h"
 #include "src/utils/config.h"
 #include "src/types/clientcontext.h"
+#include "src/network/tcpserver.h"
 
 class Server : public UInterface
 {
@@ -26,13 +27,13 @@ public:
     void start();
 
 private slots:
-    void onNewConnection();
-    void onClientDisconnected(QTcpSocket *socket);
+    void onNewConnection(ClientHandler* clientHandler);
+    void onClientDisconnected(ClientHandler* clientHandler);
 
 private:
-    std::unique_ptr<QTcpServer> m_tcpServer;
+    std::unique_ptr<TcpServer> m_tcpServer;
 
-    QMap<QTcpSocket*, ClientContext> m_clients;
+    // QMap<QTcpSocket*, ClientContext> m_clients;
 
     quint16 m_port = 1310;
 

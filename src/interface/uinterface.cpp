@@ -1,4 +1,5 @@
 #include "uinterface.h"
+#include "src/core/connectionmanager.h"
 
 UInterface::UInterface(QObject *parent)
     : QObject{parent}
@@ -32,6 +33,20 @@ void UInterface::registrateTransfer(UInterface *fromUInterface, UInterface *toUI
     fromUInterface->registrationSubscribe();
 }
 
+void UInterface::registrateTransfer(ConnectionManager *toConnectionManager, UInterface *fromUInterface)
+{
+    connect(this, &UInterface::remove, toConnectionManager, &ConnectionManager::onRemoved);
+
+    connect(this, QOverload<const QString&, UInterface*, CallbackCommandFunction>::of(&UInterface::subscribe), toConnectionManager, QOverload<const QString&, UInterface*, CallbackCommandFunction>::of(&ConnectionManager::handleSubscriber));
+    connect(this, QOverload<const QString&, UInterface*, CallbackPacketFunction>::of(&UInterface::subscribe), toConnectionManager, QOverload<const QString&, UInterface*, CallbackPacketFunction>::of(&ConnectionManager::handleSubscriber));
+
+    connect(this, QOverload<const QString&, UInterface*, CallbackCommandFunction>::of(&UInterface::unsubscribe), toConnectionManager, QOverload<const QString&, UInterface*, CallbackCommandFunction>::of(&ConnectionManager::handleSubscriber));
+    connect(this, QOverload<const QString&, UInterface*, CallbackPacketFunction>::of(&UInterface::unsubscribe), toConnectionManager, QOverload<const QString&, UInterface*, CallbackPacketFunction>::of(&ConnectionManager::handleSubscriber));
+
+    connect(this, &UInterface::createSubscribe, toConnectionManager, &ConnectionManager::handleCreateSubscribe);
+    connect(this, &UInterface::removeSubscribe, toConnectionManager, &ConnectionManager::handleRemoveSubscribe);
+}
+
 void UInterface::removeConnections()
 {
     emit remove(this, allChildreinIterfaces());
@@ -55,6 +70,16 @@ void UInterface::setId(quint64 id)
 quint64 UInterface::id()
 {
     return m_id;
+}
+
+void UInterface::setStrId(const QString &id)
+{
+    m_strId = id;
+}
+
+QString UInterface::strId()
+{
+    return m_strId;
 }
 
 void UInterface::onUCommandEmited(const QString &commandName, const QVariantMap &data)

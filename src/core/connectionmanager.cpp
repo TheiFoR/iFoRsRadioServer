@@ -34,7 +34,7 @@ void ConnectionManager::handleSubscriber(const QString &commandName, UInterface 
 }
 void ConnectionManager::handleUnsubscriber(const QString &commandName, UInterface *obj, CallbackPacketFunction function)
 {
-    qCInfo(categoryConnectionManagerSubscriber) << "Removed packet:" << commandName << "from: " << obj;
+    // qCInfo(categoryConnectionManagerSubscriber) << "Removed packet:" << commandName << "from: " << obj;
 }
 
 void ConnectionManager::onRemoved(UInterface * rootObj, QList<UInterface *> objs)
@@ -134,7 +134,7 @@ void ConnectionManager::handleUpdateConnections()
 
 void ConnectionManager::onCommandReceived(const QString& commandName, const QVariantMap& data, quint64 id)
 {
-    qCDebug(categoryConnectionManagerCommand) << "Command received:" << commandName;
+    // qCDebug(categoryConnectionManagerCommand) << "Command received:" << commandName;
     auto it = m_commandSubscribers.find(commandName);
     if (it != m_commandSubscribers.end()) {
         for (const CommandFunctionContext& ctx : it.value()) {

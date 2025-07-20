@@ -11,6 +11,7 @@
 
 #include "api/external/server.h"
 
+#include "src/core/connectionmanager.h"
 #include "src/interface/uinterface.h"
 #include "src/modules/radio/radiostationscore.h"
 #include "src/modules/server/serverstatuscore.h"
@@ -20,42 +21,44 @@ class ClientHandler : public UInterface {
     Q_OBJECT
 
 public:
-    explicit ClientHandler(QTcpSocket *socket, QObject *parent = nullptr);
+    explicit ClientHandler(qintptr socketDescriptor, QObject *parent = nullptr);
     ~ClientHandler();
 
-    void registrationSubscribe() override;
+    Q_INVOKABLE void registrationSubscribe() override;
 
 public slots:
     void removalSuccessful() override;
     void start();
 
 signals:
-    void disconnected(QTcpSocket *socket);
+    void disconnected(ClientHandler* self);
 
 private slots:
-    void onReadyRead();
     void onDisconnected();
 
+    void onReadyRead();
     void sendData(const QString& commandName, const QVariantMap& data);
 
 private:
-    bool m_registrationComplete = false;
-    QTcpSocket *m_socket;
+    bool m_registrationCompleted = false;
+
+    QTcpSocket* m_socket = nullptr;
+    qintptr m_descriptor;
+
     quint32 m_ip = 0;
     quint16 m_port = 0;
     QString m_address = "";
-    std::list<std::pair<const QString&, const QVariantMap&>> m_lostPackets;
 
     QByteArray m_buffer;
-    quint64 m_expectedSize = 0;
-    const qsizetype m_datasizePacketSize = 29;
 
     RadioStationsCore m_radioStationsCore{this};
     ServerStatusCore m_serverStatusCore{this};
 
-    void handleConnectionRequest(const QVariantMap& data);
+    ConnectionManager m_connectionManager;
 
-    void sendLostPacket();
+    void parseData();
+
+    void handleConnectionRequest(const QVariantMap& data);
 };
 
 #endif // CLIENTHANDDLER_H

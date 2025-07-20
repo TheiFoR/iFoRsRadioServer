@@ -26,57 +26,27 @@ void Server::registrationSubscribe()
 
 void Server::start()
 {
-    m_tcpServer = std::make_unique<QTcpServer>();
+    m_tcpServer = std::make_unique<TcpServer>();
 
     if (!m_tcpServer->listen(QHostAddress::Any, m_port)) {
         qCCritical(categoryServerStatus) << "Error starting the server:" << m_tcpServer->errorString();
         return;
     }
 
-    connect(m_tcpServer.get(), &QTcpServer::newConnection, this, &Server::onNewConnection);
+    connect(m_tcpServer.get(), &TcpServer::newConnection, this, &Server::onNewConnection);
+    connect(m_tcpServer.get(), &TcpServer::disconnected, this, &Server::onClientDisconnected);
 
     qCInfo(categoryServerStatus) << "Server started on port" << m_port;
 }
 
-void Server::onNewConnection()
+void Server::onNewConnection(ClientHandler* clientHandler)
 {
-    QTcpSocket *clientSocket = m_tcpServer->nextPendingConnection();
-
-    if (!clientSocket) {
-        qCWarning(categoryServerConnection) << "Failed to accept new connection";
-        return;
-    }
-
-    std::shared_ptr<QThread> clientThread = std::make_shared<QThread>(this);
-    std::shared_ptr<ClientHandler> clientHandler = std::make_shared<ClientHandler>(clientSocket);
-
-    registrateTransfer(clientHandler.get(), this);
-
-    connect(clientThread.get(), &QThread::started, clientHandler.get(), &ClientHandler::start);
-
-    connect(clientHandler.get(), &ClientHandler::disconnected, this, &Server::onClientDisconnected);
-
-    m_clients.insert(clientSocket, ClientContext{clientHandler, clientThread});
-
-    clientHandler->moveToThread(clientThread.get());
-    clientThread->start();
-
-    qCInfo(categoryServerConnection) << "New connection from:" << clientSocket->peerAddress().toString();
+    qCInfo(categoryServerConnection) << "New connection" << clientHandler->strId();
 }
 
-void Server::onClientDisconnected(QTcpSocket *socket)
+void Server::onClientDisconnected(ClientHandler* clientHandler)
 {
-    ClientContext clientContext = m_clients.value(socket);
-    if (clientContext.thread.get()) {
-        m_clients.remove(socket);
-        qCInfo(categoryServerConnection) << "Client disconnected, removing handler from server:" << "ClientContext[ Handler:" << clientContext.handler.get()
-                                         << "Thread:" << clientContext.thread.get() << "Count: [" << clientContext.handler.use_count() << clientContext.thread.use_count() << "] ]";
-        clientContext.thread->quit();
-        clientContext.thread->wait();
-    } else {
-        qCWarning(categoryServerConnection) << "Could not find client thread for handler";
-    }
-    qCInfo(categoryServerConnection) << "Client success disconnected!";
+    qCInfo(categoryServerConnection) << "Client success disconnected!" << clientHandler->strId();
 }
 
 void Server::loadSettings()
