@@ -37,69 +37,67 @@ void ConnectionManager::handleUnsubscriber(const QString &commandName, UInterfac
     // qCInfo(categoryConnectionManagerSubscriber) << "Removed packet:" << commandName << "from: " << obj;
 }
 
-void ConnectionManager::onRemoved(UInterface * rootObj, QList<UInterface *> objs)
+std::unordered_set<UInterface*> ConnectionManager::collectChildrenRecursive(UInterface* root)
 {
-    qCInfo(categoryConnectionManagerCore) << "Removing all connections for objects:" << objs;
+    std::unordered_set<UInterface*> result;
+    if (!root) return result;
 
-    for(UInterface* obj : objs){
-        for (auto it = m_commandSubscribe.begin(); it != m_commandSubscribe.end(); ) {
-            QList<UInterface*>& list = it.value();
-            int before = list.size();
-            list.removeAll(obj);
-            if (!list.isEmpty()) {
-                ++it;
-            } else {
-                it = m_commandSubscribe.erase(it);
-            }
+    std::vector<UInterface*> stack;
+    stack.push_back(root);
 
-            if (before != list.size()) {
-                disconnect(obj, &UInterface::signalIdUCommand, this, &ConnectionManager::onCommandReceived);
-                disconnect(obj, &UInterface::signalIdUPacket, this, &ConnectionManager::onPacketReceived);
-            }
-        }
+    while (!stack.empty()) {
+        UInterface* current = stack.back();
+        stack.pop_back();
 
-        for (auto it = m_commandSubscribers.begin(); it != m_commandSubscribers.end(); ) {
-            QList<CommandFunctionContext>& list = it.value();
-            int before = list.size();
-            list.erase(std::remove_if(list.begin(), list.end(),
-                                      [obj](const CommandFunctionContext& ctx) {
-                                          return ctx.obj == obj;
-                                      }), list.end());
+        if (!current || result.count(current))
+            continue;
 
-            if (list.isEmpty()) {
-                it = m_commandSubscribers.erase(it);
-            } else {
-                ++it;
-            }
+        result.insert(current);
 
-            if (before != list.size()) {
-                disconnect(obj, &UInterface::signalIdUCommand, this, &ConnectionManager::onCommandReceived);
-            }
-        }
-
-        for (auto it = m_packetSubscribers.begin(); it != m_packetSubscribers.end(); ) {
-            QList<PacketFunctionContext>& list = it.value();
-            int before = list.size();
-            list.erase(std::remove_if(list.begin(), list.end(),
-                                      [obj](const PacketFunctionContext& ctx) {
-                                          return ctx.obj == obj;
-                                      }), list.end());
-
-            if (list.isEmpty()) {
-                it = m_packetSubscribers.erase(it);
-            } else {
-                ++it;
-            }
-
-            if (before != list.size()) {
-                disconnect(obj, &UInterface::signalIdUPacket, this, &ConnectionManager::onPacketReceived);
+        const auto& childs = current->children();
+        for (QObject* childObj : childs) {
+            if (auto child = qobject_cast<UInterface*>(childObj)) {
+                stack.push_back(child);
             }
         }
     }
 
-    QMetaObject::invokeMethod(rootObj, "removalSuccessful", Qt::QueuedConnection);
+    return result;
 }
 
+void ConnectionManager::onRemoved(UInterface * rootObj)
+{
+    qCInfo(categoryConnectionManagerCore) << "Removing all connections for object:" << rootObj;
+
+    std::unordered_set<UInterface*> allChildren = collectChildrenRecursive(rootObj);
+
+    for (UInterface* obj : allChildren) {
+        qCDebug(categoryConnectionManagerCore) << " - " << obj;
+    }
+
+    for (auto it = m_commandSubscribe.begin(); it != m_commandSubscribe.end(); ++it) {
+        auto& list = it.value(); // QList<UInterface*>
+        list.erase(std::remove_if(list.begin(), list.end(),
+                                  [&](UInterface* obj){ return allChildren.count(obj) > 0; }),
+                   list.end());
+    }
+
+    for (auto it = m_commandSubscribers.begin(); it != m_commandSubscribers.end(); ++it) {
+        auto& list = it.value(); // QList<CommandFunctionContext>
+        list.erase(std::remove_if(list.begin(), list.end(),
+                                  [&](const CommandFunctionContext& ctx){ return allChildren.count(ctx.obj) > 0; }),
+                   list.end());
+    }
+
+    for (auto it = m_packetSubscribers.begin(); it != m_packetSubscribers.end(); ++it) {
+        auto& list = it.value(); // QList<PacketFunctionContext>
+        list.erase(std::remove_if(list.begin(), list.end(),
+                                  [&](const PacketFunctionContext& ctx){ return allChildren.count(ctx.obj) > 0; }),
+                   list.end());
+    }
+
+    qCInfo(categoryConnectionManagerCore) << "Removed" << allChildren.size() << "connections.";
+}
 
 void ConnectionManager::handleSubscriber(const QString &commandName, UInterface *obj, CallbackCommandFunction function)
 {

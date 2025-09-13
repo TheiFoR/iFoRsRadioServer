@@ -2,6 +2,9 @@
 #define CONNECTIONMANAGER_H
 
 #include <QObject>
+
+#include <unordered_set>
+
 #include "src/interface/uinterface.h"
 
 struct CommandFunctionContext{
@@ -30,7 +33,7 @@ public slots:
     void handleSubscriber(const QString& commandName, UInterface* obj, CallbackPacketFunction function);
     void handleUnsubscriber(const QString& commandName, UInterface* obj, CallbackPacketFunction function);
 
-    void onRemoved(UInterface * rootObj, QList<UInterface *> objs);
+    void onRemoved(UInterface * rootObj);
 
 signals:
     void updateConnections();
@@ -49,6 +52,7 @@ private:
 
     QMap<const QString, QList<PacketFunctionContext>> m_packetSubscribers;
     QMap<const QString, QList<UInterface*>> m_packetSubscribe;
+    std::unordered_set<UInterface *> collectChildrenRecursive(UInterface *root);
 };
 
 #endif // CONNECTIONMANAGER_H

@@ -39,10 +39,6 @@ public:
     void setStrId(const QString& id);
     QString strId();
 
-    QList<UInterface *> childreinIterfaces() const;
-    QList<UInterface *> allChildreinIterfaces() const;
-
-
 signals:
     void signalUCommand(const QString& commandName, const QVariantMap &data);
     void signalUPacket(const QString& commandName, const QVariantMap &data);
@@ -57,7 +53,7 @@ signals:
     void unsubscribe(const QString& commandName, UInterface* obj, CallbackPacketFunction function);
 
 
-    void remove(UInterface * rootObj, QList<UInterface *> objs);
+    void remove(UInterface * rootObj);
 
 
     void signalIdUCommand(const QString& commandName, const QVariantMap &data, quint64 id = 0xFFFFFFFFFFFFFFFF);
@@ -68,8 +64,6 @@ private slots:
     void onUPacketEmited(const QString& commandName, const QVariantMap &data);
 
 private:
-    QList<UInterface*> m_childreinIterfaces;
-
     bool m_useId = false;
     quint64 m_id = 0xFFFFFFFFFFFFFFFF;
     QString m_strId = "unknown";

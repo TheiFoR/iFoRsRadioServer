@@ -28,8 +28,6 @@ void UInterface::registrateTransfer(UInterface *fromUInterface, UInterface *toUI
 
     QObject::connect(fromUInterface, &UInterface::remove, toUInterface, &UInterface::remove);
 
-    m_childreinIterfaces.append(fromUInterface);
-
     fromUInterface->registrationSubscribe();
 }
 
@@ -49,7 +47,7 @@ void UInterface::registrateTransfer(ConnectionManager *toConnectionManager, UInt
 
 void UInterface::removeConnections()
 {
-    emit remove(this, allChildreinIterfaces());
+    emit remove(this);
 }
 
 void UInterface::setUseId(bool enabled)
@@ -90,22 +88,6 @@ void UInterface::onUCommandEmited(const QString &commandName, const QVariantMap 
 void UInterface::onUPacketEmited(const QString &commandName, const QVariantMap &data)
 {
     emit signalIdUPacket(commandName, data, m_id);
-}
-
-QList<UInterface *> UInterface::childreinIterfaces() const
-{
-    return m_childreinIterfaces;
-}
-
-QList<UInterface *> UInterface::allChildreinIterfaces() const
-{
-    QList<UInterface *> allChildrenInterfaces;
-    for (UInterface* interface : m_childreinIterfaces) {
-        QList<UInterface *> allSubChildrenInterfaces = interface->allChildreinIterfaces();
-        allChildrenInterfaces.append(allSubChildrenInterfaces);
-    }
-    allChildrenInterfaces.append(childreinIterfaces());
-    return allChildrenInterfaces;
 }
 
 void UInterface::removalSuccessful(){}

@@ -30,15 +30,32 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
         return QString(left, ' ') + text + QString(right, ' ');
     };
 
-    // Определяем префикс по уровню
-    QChar levelChar;
+    QString levelChar;
+    QString msgColor;
     switch (type) {
-    case QtDebugMsg:    levelChar = 'D'; break;
-    case QtInfoMsg:     levelChar = 'I'; break;
-    case QtWarningMsg:  levelChar = 'W'; break;
-    case QtCriticalMsg: levelChar = 'E'; break;
-    case QtFatalMsg:    levelChar = 'F'; break;
-    default:            levelChar = '?'; break;
+    case QtDebugMsg:
+        levelChar = "\033[37mD\033[0m";
+        msgColor = "\033[0;37m";
+        break; // Blue
+    case QtInfoMsg:
+        levelChar = "\033[34mI\033[0m";
+        msgColor = "\033[0;34m";
+        break; // Green
+    case QtWarningMsg:
+        levelChar = "\033[33mW\033[0m";
+        msgColor = "\033[1;33m";
+        break; // Yellow
+    case QtCriticalMsg:
+        levelChar = "\033[31mE\033[0m";
+        msgColor = "\033[1;31m";
+        break; // Red
+    case QtFatalMsg:
+        levelChar = "\033[41mF\033[0m";
+        msgColor = "\033[41m";
+        break; // Red background
+    default:
+        levelChar = "\033[37m?\033[0m";
+        break; // White
     }
 
     QString time = QTime::currentTime().toString("HH:mm:ss.zzz");
@@ -46,14 +63,15 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
     QString formattedCategory, formattedSubcategory;
     {
         QMutexLocker locker(&mutex);
-        formattedCategory = "[" + centerText(category, maxCategoryWidth) + "]";
-        formattedSubcategory = "[" + centerText(subcategory, maxSubcategoryWidth) + "]";
+        formattedCategory = centerText(category, maxCategoryWidth) + "][" + centerText(subcategory, maxSubcategoryWidth);
     }
 
-    QTextStream(stderr) << "[" << time << "] "
-                        << levelChar << " "
-                        << formattedCategory << formattedSubcategory << " "
-                        << msg << '\n';
+    QTextStream(stderr)
+        << "\033[0;37m[" << time << "]\033[0m "   // Gray time
+        << levelChar << " "
+        << "\033[1;37m[" << formattedCategory << "]\033[0m "
+        << msgColor << msg << "\033[0m"       // Light gray message
+        << '\n';
 }
 
 

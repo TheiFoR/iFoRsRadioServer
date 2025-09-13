@@ -5,6 +5,9 @@ cmake_minimum_required(VERSION 3.16)
 set(PROJECT_NAME iFoRsRadioServer)
 project(${PROJECT_NAME} VERSION 1.0 LANGUAGES CXX)
 
+# Set the CMake build type to Release by default
+set(CMAKE_PREFIX_PATH "F:/Programs/Qt/6.8.2/msvc2022_64/lib/cmake/Qt6")
+
 # Ensure that the C++ standard required is applied for this project
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
