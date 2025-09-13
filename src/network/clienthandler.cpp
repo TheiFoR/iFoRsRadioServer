@@ -133,7 +133,7 @@ void ClientHandler::parseData()
     qCInfo(categoryClientHandlerParse) << strId() << "Parsing data from buffer, current buffer size:" << m_buffer.size();
 
     if(m_buffer.isEmpty()){
-        qCInfo(categoryClientHandlerSocket) << strId() << "Network buffer is empty, nothing to parse";
+        qCDebug(categoryClientHandlerSocket) << strId() << "Network buffer is empty, nothing to parse";
         return;
     }
 
@@ -156,13 +156,13 @@ void ClientHandler::parseData()
         return;
     }
 
-    qCInfo(categoryClientHandlerParse) << "Expected packet size:" << expectedSize << "| Available data size:" << m_buffer.size() - sizeof(quint64);
+    qCDebug(categoryClientHandlerParse) << "Expected packet size:" << expectedSize << "| Available data size:" << m_buffer.size() - sizeof(quint64);
 
     QVariantMap packet;
     in >> packet;
 
     m_buffer.remove(0, sizeof(quint64) + expectedSize);
-    qCInfo(categoryClientHandlerParse) << "Packet received, remaining buffer size:" << m_buffer.size();
+    qCDebug(categoryClientHandlerParse) << "Packet received, remaining buffer size:" << m_buffer.size();
 
     if (!packet.contains("name") || !packet.contains("data")) {
         qCWarning(categoryClientHandlerParse) << "Invalid packet structure";

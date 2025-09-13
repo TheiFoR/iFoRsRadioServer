@@ -9,7 +9,7 @@
 #include <QDebug>
 
 #include "clienthandler.h"
-#include "src/modules/server/serverstatuscore.h"
+#include "src/core/server/serverstatuscore.h"
 #include "src/utils/config.h"
 #include "src/types/clientcontext.h"
 #include "src/network/tcpserver.h"

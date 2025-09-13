@@ -7,6 +7,8 @@
 #include <QDateTime>
 #include <QString>
 
+#include "src/types/logdef.h"
+
 class FileWatcher : public QObject {
     Q_OBJECT
 

@@ -2,6 +2,7 @@
 #define RADIOSTATIONSCORE_H
 
 #include <QFile>
+#include <QDir>
 
 #include "api/external/radio.h"
 

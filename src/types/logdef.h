@@ -1,6 +1,8 @@
 #ifndef LOGDEF_H
 #define LOGDEF_H
 
+#include <QLoggingCategory>
+
 #define STR(x) #x
 #define CAT_STR(x, y) STR(x) "][" STR(y)
 

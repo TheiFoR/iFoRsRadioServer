@@ -13,8 +13,8 @@
 
 #include "src/core/connectionmanager.h"
 #include "src/interface/uinterface.h"
-#include "src/modules/radio/radiostationscore.h"
-#include "src/modules/server/serverstatuscore.h"
+#include "src/core/radio/radiostationscore.h"
+#include "src/core/server/serverstatuscore.h"
 #include "src/utils/parameterhandler.h"
 
 class ClientHandler : public UInterface {
