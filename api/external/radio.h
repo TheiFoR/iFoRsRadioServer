@@ -15,8 +15,9 @@ API(RadioStationListResponse){
 API(RadioStation){
     API_FIELD(Id)    // M, uint64_t
     API_FIELD(Name)  // M, QString
-    API_FIELD(URL)   // M, QString
+    API_FIELD(URL)   // M, QUrl
     API_FIELD(Image) // O, QByteArray, .jpg
+    API_FIELD(Genre)   // M, Genre
 }
 
 } // server

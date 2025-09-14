@@ -70,6 +70,7 @@ void RadioStationsCore::handleRadioStationsListRequest(const QVariantMap &data)
         radioStationMapResult[api::radio::RadioStation::Name] = radioStationMap["name"];
         radioStationMapResult[api::radio::RadioStation::URL] = radioStationMap["url"];
         radioStationMapResult[api::radio::RadioStation::Image] = radioStationMap["image"];
+        radioStationMapResult[api::radio::RadioStation::Genre] = radioStationMap["genre"];
 
         radioStationListResult.append(radioStationMapResult);
     }
